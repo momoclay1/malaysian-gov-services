@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malaysian Government Services</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #DC143C 0%, #0066CC 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+        
+        .message.user { justify-content: flex-end; }
+        .message.bot { justify-content: flex-start; }
+        
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-content {
+            background: #007bff;
+            color: white;
+            border-radius: 18px 18px 5px 18px;
+        }
+        
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-radius: 18px 18px 18px 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .service-buttons {
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: #f8f9fa;
+        }
+        
+        .service-btn {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .service-btn:hover {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+        
+        .input-area {
+            padding: 15px;
+            background: white;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+        }
+        
+        #sendButton {
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        
+        .loading {
+            display: none;
+            padding: 10px 20px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .demo-info {
+            background: #fff3cd;
+            padding: 10px;
+            font-size: 11px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">
+            <h1>Malaysian Government Services</h1>
+            <p>🇲🇾 PDPA Compliant • Demo Mode</p>
+        </div>
+        
+        <div class="messages" id="messages">
+            <div class="message bot">
+                <div class="message-content">
+                    <strong>Selamat datang!</strong> Welcome to Malaysian Government Services! 🇲🇾<br><br>
+                    I can help you with 9 government services. Click a button below or type your request.
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">Processing your request...</div>
+        
+        <div class="service-buttons">
+            <button class="service-btn" onclick="sendQuickMessage('I want to check for unpaid summons')">Check Summons</button>
+            <button class="service-btn" onclick="sendQuickMessage('I want to renew my driver license')">Renew License</button>
+            <button class="service-btn" onclick="sendQuickMessage('I want to pay my saman')">Pay Fine</button>
+            <button class="service-btn" onclick="sendQuickMessage('I want to apply for new license')">Apply License</button>
+            <button class="service-btn" onclick="sendQuickMessage('I want to change car ownership')">Transfer Ownership</button>
+            <button class="service-btn" onclick="sendQuickMessage('I want to report missing vehicle')">Missing Vehicle</button>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button id="sendButton" onclick="sendMessage()">Send</button>
+        </div>
+        
+        <div class="demo-info">
+            <strong>Demo Data:</strong> IC: 850603-14-5678 (has summons) | IC: 901215-08-1234 (clean record)
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://v2nrreoy8a.execute-api.ap-southeast-1.amazonaws.com/prod/chat';
+        let sessionId = 'session-' + Date.now();
+
+        async function sendMessageToBackend(message) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: sessionId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return {
+                    success: true,
+                    response: data.response
+                };
+
+            } catch (error) {
+                console.error('API Error:', error);
+                return {
+                    success: false,
+                    response: "Sorry, cannot connect to government services. Please try again."
+                };
+            }
+        }
+
+        function addMessage(text, isUser = false) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = text.replace(/\n/g, '<br>');
+            
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addMessage(message, true);
+            input.value = '';
+            showLoading();
+            
+            const result = await sendMessageToBackend(message);
+            hideLoading();
+            addMessage(result.response);
+        }
+
+        function sendQuickMessage(message) {
+            document.getElementById('messageInput').value = message;
+            sendMessage();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
